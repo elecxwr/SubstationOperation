@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>周期维护任务管理</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="styles.css" rel="stylesheet">
+
+</head>
+<body>
+    <div class="header text-center">
+        <h1>周期维护任务管理系统</h1>
+    </div>
+
+    <div class="container">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="filter-section">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <div class="date-display">
+                                当前日期: <span id="current-date"></span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex">
+                                <input type="date" id="date-picker" class="form-control me-2">
+                                <button id="search-btn" class="btn btn-primary me-2">查询</button>
+                                <button id="today-btn" class="btn btn-secondary">回到今日</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-12">
+                <div id="task-summary" class="alert alert-info d-none">
+                    当前日期共有 <span id="task-count">0</span> 项任务需要处理
+                </div>
+            </div>
+        </div>
+
+        <div id="loading" class="loading d-none">
+            <div class="loading-spinner"></div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-12">
+                <div id="tasks-container">
+                    <!-- 任务卡片将在这里动态生成 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+        // 存储CSV数据的数组
+        let tasksData = [];
+
+        // 页面加载时执行
+        document.addEventListener('DOMContentLoaded', async function() {
+            // 加载CSV数据
+            tasksData = await window.appUtils.loadCSVData();
+            
+            // 设置当前日期
+            const today = new Date();
+            document.getElementById('current-date').textContent = window.appUtils.formatDate(today);
+            document.getElementById('date-picker').value = window.appUtils.formatDateForInput(today);
+            
+            // 显示今天的任务
+            displayTasksForDate(today);
+            
+            // 设置查询按钮事件
+            document.getElementById('search-btn').addEventListener('click', function() {
+                const selectedDate = new Date(document.getElementById('date-picker').value);
+                displayTasksForDate(selectedDate);
+            });
+            
+            // 设置回到今日按钮事件
+            document.getElementById('today-btn').addEventListener('click', function() {
+                const today = new Date();
+                document.getElementById('date-picker').value = window.appUtils.formatDateForInput(today);
+                displayTasksForDate(today);
+            });
+        });
+
+        // 根据日期显示任务
+        function displayTasksForDate(date) {
+            // 显示加载动画
+            document.getElementById('loading').classList.remove('d-none');
+            
+            // 清空任务容器
+            const tasksContainer = document.getElementById('tasks-container');
+            tasksContainer.innerHTML = '';
+            
+            // 隐藏任务摘要
+            document.getElementById('task-summary').classList.add('d-none');
+            
+            // 更新当前日期显示（包含星期几）
+            document.getElementById('current-date').textContent = window.appUtils.formatDate(date);
+            
+            // 查找匹配的任务
+            const matchingTasks = window.appUtils.findTasksForDate(date, tasksData);
+            
+            // 隐藏加载动画
+            setTimeout(() => {
+                document.getElementById('loading').classList.add('d-none');
+                
+                // 显示任务或无任务提示
+                if (matchingTasks.length === 0) {
+                    tasksContainer.innerHTML = `
+                        <div class="no-tasks">
+                            <h3>当前日期没有计划任务</h3>
+                            <p>请选择其他日期查看</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // 更新任务计数并显示摘要
+                document.getElementById('task-count').textContent = matchingTasks.length;
+                document.getElementById('task-summary').classList.remove('d-none');
+                
+                // 创建任务卡片
+                matchingTasks.forEach(task => {
+                    const taskCard = document.createElement('div');
+                    taskCard.className = 'card task-card mb-3';
+                    taskCard.innerHTML = `
+                        <div class="card-body">
+                            <h5 class="card-title">${task.工作内容}</h5>
+                            <h6 class="card-subtitle mb-2 text-muted">计划时间: ${task.计划时间}</h6>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <p><strong>记录名称:</strong> ${task.记录名称}</p>
+                                </div>
+                                <div class="col-md-8">
+                                    <p><strong>记录要求:</strong> ${task.记录要求}</p>
+                                </div>
+                            </div>
+                            <p class="card-text"><strong>备注:</strong> ${task.备注}</p>
+                        </div>
+                    `;
+                    tasksContainer.appendChild(taskCard);
+                });
+            }, 300); // 添加短暂延迟以显示加载动画
+        }
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
